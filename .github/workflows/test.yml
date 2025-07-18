@@ -1,0 +1,78 @@
+name: test
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: "Linux (Ubuntu)"
+            coverage: true
+          - os: macos-latest
+            name: "macOS"
+            coverage: true
+      fail-fast: false
+
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
+    name: Test on ${{ matrix.name }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Cache for package managers
+    - name: Cache APT packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt
+        key: ${{ runner.os }}-apt-${{ hashFiles('**/test.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-
+
+    - name: Cache Homebrew (macOS)
+      if: matrix.os == 'macos-latest'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /usr/local/Homebrew
+        key: ${{ runner.os }}-homebrew-${{ hashFiles('**/test.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-homebrew-
+
+    # Native OS tests (Linux, macOS, Windows)
+    - name: Install Tools (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install gcc make lcov libssl-dev -y
+
+    - name: Install Tools (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install openssl lcov
+        brew cleanup
+
+    - name: Run Test
+      run: |
+        make coverage
+
+    - name: Run Test with OpenSSL
+      run: |
+        make coverage-openssl
+
+    - name: Upload Coverage to Codecov
+      if: matrix.coverage
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: unittests
+        files: coverage.info, coverage-openssl.info
+
