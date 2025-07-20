@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <stddef.h>
-#include <string.h> /* memset */
 
 typedef enum secrandom_result_e {
     SECRANDOM_SUCCESS     = 0,
@@ -466,8 +465,6 @@ static inline secrandom_result_e secrandom(void *buf, size_t len,
     }
 #endif /* POSIX */
 
-    /* if all methods failed, zero the buffer */
-    memset(buf, 0, len);
     if (rc == SECRANDOM_UNSUPPORTED) {
         errno = ENOSYS; /* Function not implemented */
     } else {
